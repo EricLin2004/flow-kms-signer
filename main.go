@@ -109,42 +109,42 @@ func kmsSigner(c *cli.Context) error {
 			cadenceArgsPerTx := strings.Split(cadenceArgsSplit[i], ",")
 
 			for j := 0; j < len(cadenceArgsPerTx); j++ {
-				cadenceArgumentsMap[fmt.Sprintf("Arg%d", i)] = cadenceArgsPerTx[j]
-
-				txScript := txUtils.ParseCadenceTemplateV2(cadenceFilePath, cadenceArgumentsMap)
-
-				latestBlock, _ := flowProvider.GetLatestBlock(context.Background(), true)
-
-				setupTx :=
-					flow.NewTransaction().
-						SetScript(txScript).
-						SetGasLimit(100).
-						SetProposalKey(
-							accountAddress,
-							accountKey.Index,
-							accountKey.SequenceNumber).
-						SetReferenceBlockID(latestBlock.ID).
-						SetPayer(accountAddress).
-						AddAuthorizer(accountAddress)
-
-				// Sign and send to Flow access node
-				signedTx, err := flowProvider.SignTransaction(ctx, setupTx, accountAddress, accountInfo.Signer)
-				if err != nil {
-					return err
-				}
-
-				// Wait for seal
-				result, err := SendSignedTransactionAndWaitForSeal(ctx, flowProvider, signedTx)
-				if err != nil {
-					return err
-				}
-
-				fmt.Println("==> Transaction signed and sent")
-				fmt.Printf("Status: %s\n", result.Status)
-				fmt.Printf("Events: %s\n", result.Events)
-
-				accountKey.SequenceNumber++
+				cadenceArgumentsMap[fmt.Sprintf("Arg%d", j)] = cadenceArgsPerTx[j]
 			}
+
+			txScript := txUtils.ParseCadenceTemplateV2(cadenceFilePath, cadenceArgumentsMap)
+
+			latestBlock, _ := flowProvider.GetLatestBlock(context.Background(), true)
+
+			setupTx :=
+				flow.NewTransaction().
+					SetScript(txScript).
+					SetGasLimit(100).
+					SetProposalKey(
+						accountAddress,
+						accountKey.Index,
+						accountKey.SequenceNumber).
+					SetReferenceBlockID(latestBlock.ID).
+					SetPayer(accountAddress).
+					AddAuthorizer(accountAddress)
+
+			// Sign and send to Flow access node
+			signedTx, err := flowProvider.SignTransaction(ctx, setupTx, accountAddress, accountInfo.Signer)
+			if err != nil {
+				return err
+			}
+
+			// Wait for seal
+			result, err := SendSignedTransactionAndWaitForSeal(ctx, flowProvider, signedTx)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("==> Transaction signed and sent")
+			fmt.Printf("Status: %s\n", result.Status)
+			fmt.Printf("Events: %s\n", result.Events)
+
+			accountKey.SequenceNumber++
 		}
 	}
 

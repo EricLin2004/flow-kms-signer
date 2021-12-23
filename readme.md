@@ -40,7 +40,7 @@ transaction {
     prepare(signer: AuthAccount) {}
 }
 ```
-Running `flow-kms-signer sasm -c /path/to/cadence/file.cdc -ca value1,two` would attempt to sign the following:
+Running `flow-kms-signer sasm -c /path/to/cadence/file.cdc -ca "value1,two"` would attempt to sign the following:
 ```
 import FungibleToken from 0xvalue1
 import DapperUtilityCoin from 0xtwo
@@ -50,4 +50,4 @@ transaction {
 }
 ```
 
-You can run multiple tx one after the other by using arguments separated by semi-colons. It will wait for sealing before sending the next transaction. For example: `flow-kms-signer sasm -c /path/to/cadence/file.cdc -ca value1,two;value2,three` will attempt to send two transactions using the same `file.cdc` template with arguments `value1,two` for the first and `value2,three` for the second.
+You can run multiple tx one after the other by using arguments separated by semi-colons. It will wait for sealing before sending the next transaction. For example: `flow-kms-signer sasm -c /path/to/cadence/file.cdc -ca "value1,two;value2,three"` will attempt to send two transactions using the same `file.cdc` template with arguments `value1,two` for the first and `value2,three` for the second.
