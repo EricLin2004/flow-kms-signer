@@ -37,8 +37,8 @@ func main() {
 	app.UseShortOptionHandling = true
 	app.Commands = []*cli.Command{
 		{
-			Name:  "sign-and-send",
-			Usage: "Sign a cadence transaction with the corresponding KMS key and send transaction to access node",
+			Name:  "sasm",
+			Usage: "sign and send multiple cadence transactions using different arguments with the corresponding KMS key and send transaction to access node",
 			Flags: []cli.Flag{
 				&cli.StringFlag{Name: "project", Aliases: []string{"p"}, EnvVars: []string{"KMS_PROJECT"}, Required: true},
 				&cli.StringFlag{Name: "keyring", Aliases: []string{"kr"}, EnvVars: []string{"KMS_KEYRING"}, Required: true},
@@ -50,7 +50,7 @@ func main() {
 				&cli.StringFlag{Name: "cadencearguments", Aliases: []string{"ca"}},
 			},
 			Action: kmsSigner,
-		},
+		}
 	}
 
 	err := app.Run(os.Args)
@@ -71,17 +71,6 @@ func kmsSigner(c *cli.Context) error {
 
 	if flowAccessNode == "" || projectID == "" || keyRing == "" || keyVersion == "" || key == "" || signerAddress == "" || cadenceFilePath == "" {
 		return errors.New("missing arguments in sign-and-send command")
-	}
-
-	// Cadence Arguments mapping
-	cadenceArguments := c.String("cadencearguments")
-	cadenceArgumentsMap := make(map[string]string)
-	if cadenceArguments != "" {
-		cadenceArgsSplit := strings.Split(cadenceArguments, ",")
-
-		for i := 0; i < len(cadenceArgsSplit); i++ {
-			cadenceArgumentsMap[fmt.Sprintf("Arg%d", i)] = cadenceArgsSplit[i]
-		}
 	}
 
 	// KMS Configuration
@@ -110,37 +99,54 @@ func kmsSigner(c *cli.Context) error {
 	accountKey := accountInfo.AccountKey
 
 	// Setup Cadence script with arguments
-	txScript := txUtils.ParseCadenceTemplateV2(cadenceFilePath, cadenceArgumentsMap)
+	// Cadence arguments mapping
+	cadenceArguments := c.String("cadencearguments")
+	if cadenceArguments != "" {
+		cadenceArgsSplit := strings.Split(cadenceArguments, ";")
 
-	latestBlock, _ := flowProvider.GetLatestBlock(context.Background(), true)
+		for i := 0; i < len(cadenceArgsSplit); i++ {
+			cadenceArgumentsMap := make(map[string]string)
+			cadenceArgsPerTx := strings.Split(cadenceArgsSplit[i], ",")
 
-	setupTx :=
-		flow.NewTransaction().
-			SetScript(txScript).
-			SetGasLimit(100).
-			SetProposalKey(
-				accountAddress,
-				accountKey.Index,
-				accountKey.SequenceNumber).
-			SetReferenceBlockID(latestBlock.ID).
-			SetPayer(accountAddress).
-			AddAuthorizer(accountAddress)
+			for j := 0; j < len(cadenceArgsPerTx); j++ {
+				cadenceArgumentsMap[fmt.Sprintf("Arg%d", i)] = cadenceArgsPerTx[j]
 
-	// Sign and send to Flow access node
-	signedTx, err := flowProvider.SignTransaction(ctx, setupTx, accountAddress, accountInfo.Signer)
-	if err != nil {
-		return err
+				txScript := txUtils.ParseCadenceTemplateV2(cadenceFilePath, cadenceArgumentsMap)
+
+				latestBlock, _ := flowProvider.GetLatestBlock(context.Background(), true)
+
+				setupTx :=
+					flow.NewTransaction().
+						SetScript(txScript).
+						SetGasLimit(100).
+						SetProposalKey(
+							accountAddress,
+							accountKey.Index,
+							accountKey.SequenceNumber).
+						SetReferenceBlockID(latestBlock.ID).
+						SetPayer(accountAddress).
+						AddAuthorizer(accountAddress)
+
+				// Sign and send to Flow access node
+				signedTx, err := flowProvider.SignTransaction(ctx, setupTx, accountAddress, accountInfo.Signer)
+				if err != nil {
+					return err
+				}
+
+				// Wait for seal
+				result, err := SendSignedTransactionAndWaitForSeal(ctx, flowProvider, signedTx)
+				if err != nil {
+					return err
+				}
+
+				fmt.Println("==> Transaction signed and sent")
+				fmt.Printf("Status: %s\n", result.Status)
+				fmt.Printf("Events: %s\n", result.Events)
+
+				accountKey.SequenceNumber++
+			}
+		}
 	}
-
-	// Wait for seal
-	result, err := SendSignedTransactionAndWaitForSeal(ctx, flowProvider, signedTx)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("==> Transaction signed and sent")
-	fmt.Printf("Status: %s\n", result.Status)
-	fmt.Printf("Events: %s\n", result.Events)
 
 	return nil
 }
