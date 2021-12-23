@@ -131,12 +131,14 @@ func kmsSigner(c *cli.Context) error {
 			// Sign and send to Flow access node
 			signedTx, err := flowProvider.SignTransaction(ctx, setupTx, accountAddress, accountInfo.Signer)
 			if err != nil {
+				fmt.Printf("failed to signTransaction: %+v\n", cadenceArgumentsMap)
 				return err
 			}
 
 			// Wait for seal
 			result, err := SendSignedTransactionAndWaitForSeal(ctx, flowProvider, signedTx)
 			if err != nil {
+				fmt.Printf("failed to send and wait for seal: %+v\n", cadenceArgumentsMap)
 				return err
 			}
 
