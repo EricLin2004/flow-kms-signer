@@ -50,7 +50,7 @@ func main() {
 				&cli.StringFlag{Name: "cadencearguments", Aliases: []string{"ca"}},
 			},
 			Action: kmsSigner,
-		}
+		},
 	}
 
 	err := app.Run(os.Args)
